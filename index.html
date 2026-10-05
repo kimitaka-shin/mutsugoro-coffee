@@ -625,13 +625,63 @@ function drawTasteMap(selectedX=null,selectedY=null){
 }
 
 function pickMap(e){
-  const r=$('map').getBoundingClientRect();
-  let x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-  let y=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
-  data.map={sweet:Math.round(x*100), acidity:Math.round((1-y)*100), bitter:Math.round((1-x)*100)};
-  drawTasteMap(x,y);
-  $('mapHint').textContent='ここが、今日あなたが飲みたい味です';
-  $('mapNext').disabled=false;
+  const r = $('map').getBoundingClientRect();
+
+  let x = Math.max(
+    0,
+    Math.min(1, (e.clientX - r.left) / r.width)
+  );
+
+  let y = Math.max(
+    0,
+    Math.min(1, (e.clientY - r.top) / r.height)
+  );
+
+  // 味わい地図の位置を保存
+  data.map = {
+    sweet: Math.round(x * 100),
+    acidity: Math.round((1 - y) * 100),
+    bitter: Math.round((1 - x) * 100)
+  };
+
+  // 選択位置の丸を表示
+  $('dot').style.display = 'block';
+  $('dot').style.left = (x * 100) + '%';
+  $('dot').style.top = (y * 100) + '%';
+
+  // メッセージを変更
+  $('mapHint').textContent =
+    'ここが、今日あなたが飲みたい味です';
+
+  // 次へ進めるようにする
+  $('mapNext').disabled = false;
+
+  // Renderのサーバーへ味わい地図を送信
+  fetch('/api/taste-selected', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      sessionCode: data.sessionCode || null,
+      keywords: data.selectedKeywords || [],
+      map: data.map,
+      timestamp: new Date().toISOString()
+    })
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('通知の送信に失敗しました');
+    }
+
+    return response.json();
+  })
+  .then(result => {
+    console.log('LINE通知処理:', result);
+  })
+  .catch(error => {
+    console.error('LINE通知エラー:', error);
+  });
 }
 
 window.addEventListener('resize',()=>{if($('s3')?.classList.contains('active'))requestAnimationFrame(()=>drawTasteMap());});
